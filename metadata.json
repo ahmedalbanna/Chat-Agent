@@ -1,0 +1,6 @@
+{
+  "name": "الوكيل الذكي",
+  "description": "تطبيق محادثة ذكي مع وكلاء قابلين للتخصيص يدعم الصور والنصوص",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
