@@ -55,7 +55,7 @@ fun ChatScreen(
     val isTyping by chatViewModel.isTyping.collectAsStateWithLifecycle()
     val selectedId by chatViewModel.selectedInstructionId.collectAsStateWithLifecycle()
 
-    val agentColor = agent?.colorHex?.let { Color(android.graphics.Color.parseColor(it)) } ?: MaterialTheme.colorScheme.primary
+    val agentColor = MaterialTheme.colorScheme.primary
 
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()

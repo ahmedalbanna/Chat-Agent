@@ -35,6 +35,9 @@ interface InstructionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertInstruction(instruction: Instruction): Long
 
+    @Update
+    suspend fun updateInstruction(instruction: Instruction)
+
     @Delete
     suspend fun deleteInstruction(instruction: Instruction)
 }

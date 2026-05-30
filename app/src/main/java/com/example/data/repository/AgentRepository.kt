@@ -23,6 +23,7 @@ class AgentRepository(
     fun getInstructions(agentId: Long) = instructionDao.getInstructionsForAgent(agentId)
     suspend fun getInstructionById(id: Long) = instructionDao.getInstructionById(id)
     suspend fun insertInstruction(instruction: Instruction) = instructionDao.insertInstruction(instruction)
+    suspend fun updateInstruction(instruction: Instruction) = instructionDao.updateInstruction(instruction)
     suspend fun deleteInstruction(instruction: Instruction) = instructionDao.deleteInstruction(instruction)
 
     fun getMessages(agentId: Long, instructionId: Long) = messageDao.getMessagesForAgentAndInstruction(agentId, instructionId)

@@ -32,11 +32,12 @@ fun AgentEditorScreen(
     val instructions by viewModel.getInstructions(agentId).collectAsStateWithLifecycle()
     val agents by viewModel.allAgents.collectAsStateWithLifecycle()
     val agent = agents.find { it.id == agentId }
+    
     var showAddDialog by remember { mutableStateOf(false) }
+    var editingInstruction by remember { mutableStateOf<Instruction?>(null) }
 
     var agentName by remember(agent) { mutableStateOf(agent?.name ?: "") }
     var agentDesc by remember(agent) { mutableStateOf(agent?.description ?: "") }
-    var agentColorHex by remember(agent) { mutableStateOf(agent?.colorHex ?: "#6750A4") }
 
     Scaffold(
         topBar = {
@@ -72,70 +73,47 @@ fun AgentEditorScreen(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Text("مظهر الوكيل", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        Text("بيانات الوكيل", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                         
                         TextField(
                             value = agentName,
                             onValueChange = { agentName = it },
-                            label = { Text("الاسم") },
+                            label = { Text("اسم الوكيل") },
                             modifier = Modifier.fillMaxWidth()
                         )
                         
                         TextField(
                             value = agentDesc,
                             onValueChange = { agentDesc = it },
-                            label = { Text("الوصف") },
+                            label = { Text("وصف الوكيل") },
                             modifier = Modifier.fillMaxWidth()
                         )
-
-                        Text("لون الوكيل", fontWeight = FontWeight.SemiBold)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            listOf("#6750A4", "#4CAF50", "#FFC107", "#F44336", "#2196F3").forEach { color ->
-                                Box(
-                                    modifier = Modifier
-                                        .size(32.dp)
-                                        .background(androidx.compose.ui.graphics.Color(android.graphics.Color.parseColor(color)), CircleShape)
-                                        .border(if (agentColorHex == color) 2.dp else 0.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
-                                        .clickable { agentColorHex = color }
-                                )
-                            }
-                        }
 
                         Button(
                             onClick = {
                                 agent?.let {
-                                    viewModel.updateAgent(it.copy(name = agentName, description = agentDesc, colorHex = agentColorHex))
+                                    viewModel.updateAgent(it.copy(name = agentName, description = agentDesc))
                                 }
                             },
                             modifier = Modifier.align(Alignment.End)
                         ) {
-                            Text("تحديث الملف الشخصي")
+                            Text("تحديث البيانات")
                         }
                     }
                 }
             }
             item {
-                Card(
-                    modifier = Modifier.fillMaxWidth().border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(24.dp)),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(0.4f))
-                ) {
-                    Column(Modifier.padding(16.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                            Text("إعدادات التعليمة النشطة", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                            Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = CircleShape) {
-                                Text("نمط هجين", modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                            }
-                        }
-                        Spacer(Modifier.height(8.dp))
-                        Text("التعليمات (Capabilities)", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                        Text("توليد ردود ذكية وتحليل عميق للبيانات", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
+                Text(
+                    "التعليمات والقدرات",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
             }
             items(instructions) { instruction ->
                 InstructionCard(
                     instruction = instruction,
+                    onEdit = { editingInstruction = instruction },
                     onDelete = { viewModel.deleteInstruction(instruction) }
                 )
             }
@@ -143,53 +121,96 @@ fun AgentEditorScreen(
     }
 
     if (showAddDialog) {
-        var name by remember { mutableStateOf("") }
-        var model by remember { mutableStateOf("gemini-3.5-flash") }
-        var type by remember { mutableStateOf("TEXT") }
+        InstructionDialog(
+            title = "تعليمة جديدة",
+            onDismiss = { showAddDialog = false },
+            onConfirm = { name, prompt, model, type ->
+                viewModel.addInstruction(agentId, name, prompt, model, type)
+            }
+        )
+    }
 
-        AlertDialog(
-            onDismissRequest = { showAddDialog = false },
-            title = { Text("تعليمة جديدة") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextField(value = name, onValueChange = { name = it }, label = { Text("الاسم") }, modifier = Modifier.fillMaxWidth())
-                    
-                    Text("النموذج", fontWeight = FontWeight.SemiBold)
-                    val models = listOf("gemini-3.5-flash", "gemini-3.1-pro-preview", "gemini-2.5-flash-image")
-                    models.forEach { m ->
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable { model = m }) {
-                            RadioButton(selected = (model == m), onClick = { model = m })
-                            Text(m)
-                        }
-                    }
-
-                    Text("نوع الاستجابة", fontWeight = FontWeight.SemiBold)
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(selected = (type == "TEXT"), onClick = { type = "TEXT" })
-                        Text("نص")
-                        Spacer(Modifier.width(16.dp))
-                        RadioButton(selected = (type == "IMAGE"), onClick = { type = "IMAGE" })
-                        Text("صورة")
-                    }
+    if (editingInstruction != null) {
+        InstructionDialog(
+            title = "تعديل التعليمة",
+            initialInstruction = editingInstruction,
+            onDismiss = { editingInstruction = null },
+            onConfirm = { name, prompt, model, type ->
+                editingInstruction?.let {
+                    viewModel.updateInstruction(it.copy(name = name, systemPrompt = prompt, modelName = model, responseType = type))
                 }
-            },
-            confirmButton = {
-                Button(onClick = {
-                    if (name.isNotBlank()) {
-                        viewModel.addInstruction(agentId, name, model, type)
-                        showAddDialog = false
-                    }
-                }) { Text("إضافة") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showAddDialog = false }) { Text("إلغاء") }
             }
         )
     }
 }
 
 @Composable
-fun InstructionCard(instruction: Instruction, onDelete: () -> Unit) {
+fun InstructionDialog(
+    title: String,
+    initialInstruction: Instruction? = null,
+    onDismiss: () -> Unit,
+    onConfirm: (String, String, String, String) -> Unit
+) {
+    var name by remember { mutableStateOf(initialInstruction?.name ?: "") }
+    var prompt by remember { mutableStateOf(initialInstruction?.systemPrompt ?: "") }
+    var model by remember { mutableStateOf(initialInstruction?.modelName ?: "gemini-3.5-flash") }
+    var type by remember { mutableStateOf(initialInstruction?.responseType ?: "TEXT") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                item {
+                    TextField(value = name, onValueChange = { name = it }, label = { Text("اسم القدرة") }, modifier = Modifier.fillMaxWidth())
+                }
+                item {
+                    TextField(
+                        value = prompt,
+                        onValueChange = { prompt = it },
+                        label = { Text("التعليمة (System Prompt)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 3
+                    )
+                }
+                item {
+                    Text("النموذج المستخدم", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                    val models = listOf("gemini-3.5-flash", "gemini-3.1-pro-preview", "gemini-2.5-flash-image")
+                    models.forEach { m ->
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable { model = m }) {
+                            RadioButton(selected = (model == m), onClick = { model = m })
+                            Text(m, fontSize = 14.sp)
+                        }
+                    }
+                }
+                item {
+                    Text("نوع مخرجات القدرة", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = (type == "TEXT"), onClick = { type = "TEXT" })
+                        Text("نصي")
+                        Spacer(Modifier.width(16.dp))
+                        RadioButton(selected = (type == "IMAGE"), onClick = { type = "IMAGE" })
+                        Text("صورة")
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                if (name.isNotBlank()) {
+                    onConfirm(name, prompt, model, type)
+                    onDismiss()
+                }
+            }) { Text("حفظ") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("إلغاء") }
+        }
+    )
+}
+
+@Composable
+fun InstructionCard(instruction: Instruction, onEdit: () -> Unit, onDelete: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp)),
         shape = RoundedCornerShape(16.dp),
@@ -213,10 +234,13 @@ fun InstructionCard(instruction: Instruction, onDelete: () -> Unit) {
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(instruction.name, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                Text("${instruction.modelName} • ${if (instruction.responseType == "TEXT") "نص" else "صورة"}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("${instruction.modelName} • ${if (instruction.responseType == "TEXT") "نصي" else "صورة"}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            IconButton(onClick = onEdit) {
+                Icon(Icons.Default.Edit, contentDescription = "تعديل", modifier = Modifier.size(20.dp))
             }
             IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = "حذف")
+                Icon(Icons.Default.Delete, contentDescription = "حذف", modifier = Modifier.size(20.dp))
             }
         }
     }
