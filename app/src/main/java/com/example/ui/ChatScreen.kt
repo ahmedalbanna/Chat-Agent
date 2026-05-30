@@ -4,7 +4,11 @@ import android.graphics.Bitmap
 import android.graphics.ImageDecoder
 import android.net.Uri
 import android.os.Build
+import android.content.ContentValues
+import android.content.Intent
+import android.os.Environment
 import android.provider.MediaStore
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -28,7 +32,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -38,7 +44,58 @@ import com.example.model.Instruction
 import com.example.model.Message
 import com.example.viewmodel.AgentViewModel
 import com.example.viewmodel.ChatViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.InputStream
+import java.net.URL
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.font.FontStyle
+
+@Composable
+fun MarkdownText(
+    markdown: String,
+    modifier: Modifier = Modifier,
+    style: androidx.compose.ui.text.TextStyle = LocalTextStyle.current
+) {
+    val annotatedString = remember(markdown) {
+        buildAnnotatedString {
+            // Very basic Markdown parser for bold (**) and italic (*)
+            val boldRegex = Regex("\\*\\*(.*?)\\*\\*")
+            val italicRegex = Regex("\\*(.*?)\\*")
+            
+            var lastIndex = 0
+            val matches = (boldRegex.findAll(markdown) + italicRegex.findAll(markdown))
+                .sortedBy { it.range.first }
+                .toList()
+
+            for (match in matches) {
+                if (match.range.first < lastIndex) continue
+                
+                append(markdown.substring(lastIndex, match.range.first))
+                
+                val isBold = match.value.startsWith("**")
+                withStyle(style = SpanStyle(
+                    fontWeight = if (isBold) FontWeight.Bold else FontWeight.Normal,
+                    fontStyle = if (!isBold) FontStyle.Italic else FontStyle.Normal
+                )) {
+                    append(match.groupValues[1])
+                }
+                lastIndex = match.range.last + 1
+            }
+            append(markdown.substring(lastIndex))
+        }
+    }
+
+    Text(
+        text = annotatedString,
+        modifier = modifier,
+        style = style
+    )
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -205,6 +262,10 @@ fun ChatScreen(
 @Composable
 fun MessageBubble(message: Message, agentName: String, agentColor: Color) {
     val isUser = message.role == "USER"
+    val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
+    val coroutineScope = rememberCoroutineScope()
+
     Column(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         horizontalAlignment = if (isUser) Alignment.End else Alignment.Start
@@ -233,13 +294,112 @@ fun MessageBubble(message: Message, agentName: String, agentColor: Color) {
             shadowElevation = 1.dp
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
-                if (message.content.isNotBlank()) {
-                    Text(
-                        text = message.content,
-                        fontSize = 14.sp,
-                        lineHeight = 20.sp
+                if (message.imagePath != null) {
+                    AsyncImage(
+                        model = message.imagePath,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .padding(bottom = 8.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .fillMaxWidth(0.8f)
+                            .heightIn(max = 300.dp),
+                        contentScale = ContentScale.Fit
                     )
                 }
+
+                if (message.content.isNotBlank()) {
+                    MarkdownText(
+                        markdown = message.content,
+                        style = androidx.compose.ui.text.TextStyle(
+                            fontSize = 14.sp,
+                            lineHeight = 20.sp,
+                            color = if (isUser) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onSurface
+                        )
+                    )
+                }
+                
+                Spacer(Modifier.height(8.dp))
+                
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = {
+                            clipboardManager.setText(AnnotatedString(message.content))
+                            Toast.makeText(context, "تم النسخ إلى الحافظة", Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(Icons.Default.ContentCopy, contentDescription = "نسخ", modifier = Modifier.size(16.dp))
+                    }
+                    
+                    IconButton(
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, message.content)
+                            }
+                            context.startActivity(Intent.createChooser(intent, "مشاركة الرسالة"))
+                        },
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(Icons.Default.Share, contentDescription = "مشاركة", modifier = Modifier.size(16.dp))
+                    }
+
+                    if (message.imagePath != null) {
+                        IconButton(
+                            onClick = {
+                                coroutineScope.launch {
+                                    saveImageLocally(context, message.imagePath)
+                                }
+                            },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(Icons.Default.Download, contentDescription = "تنزيل", modifier = Modifier.size(16.dp))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+suspend fun saveImageLocally(context: android.content.Context, imageUrl: String) {
+    withContext(Dispatchers.IO) {
+        try {
+            val fileName = "AI_Agent_${System.currentTimeMillis()}.jpg"
+            val resolver = context.contentResolver
+            val contentValues = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/AI_Agent")
+                }
+            }
+
+            val imageUri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+            imageUri?.let { uri ->
+                val outputStream = resolver.openOutputStream(uri)
+                val inputStream: InputStream = if (imageUrl.startsWith("http")) {
+                    URL(imageUrl).openStream()
+                } else {
+                    File(imageUrl).inputStream()
+                }
+                
+                inputStream.use { input ->
+                    outputStream?.use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "تم حفظ الصورة في الاستوديو", Toast.LENGTH_SHORT).show()
+                }
+            }
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, "فشل تنزيل الصورة: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
