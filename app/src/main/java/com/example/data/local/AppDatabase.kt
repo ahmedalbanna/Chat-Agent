@@ -14,6 +14,9 @@ interface AgentDao {
     @Query("SELECT * FROM agents WHERE id = :id")
     suspend fun getAgentById(id: Long): Agent?
 
+    @Update
+    suspend fun updateAgent(agent: Agent)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAgent(agent: Agent): Long
 
@@ -44,8 +47,14 @@ interface MessageDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertMessage(message: Message): Long
 
+    @Delete
+    suspend fun deleteMessage(message: Message)
+
     @Query("DELETE FROM messages WHERE agentId = :agentId")
     suspend fun deleteMessagesForAgent(agentId: Long)
+
+    @Query("SELECT * FROM messages WHERE content LIKE '%' || :query || '%' ORDER BY timestamp DESC")
+    fun searchMessages(query: String): Flow<List<Message>>
 }
 
 @Database(entities = [Agent::class, Instruction::class, Message::class], version = 1, exportSchema = false)

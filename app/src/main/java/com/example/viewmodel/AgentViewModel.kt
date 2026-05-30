@@ -22,9 +22,15 @@ class AgentViewModel(private val repository: AgentRepository) : ViewModel() {
 
     fun addAgent(name: String, description: String = "") {
         viewModelScope.launch {
-            val agentId = repository.insertAgent(Agent(name = name, description = description))
+            val agentId = repository.insertAgent(Agent(name = name, description = description, colorHex = "#6750A4"))
             // Add a default instruction
             repository.insertInstruction(Instruction(agentId = agentId, name = "Default Instruction"))
+        }
+    }
+
+    fun updateAgent(agent: Agent) {
+        viewModelScope.launch {
+            repository.updateAgent(agent)
         }
     }
 

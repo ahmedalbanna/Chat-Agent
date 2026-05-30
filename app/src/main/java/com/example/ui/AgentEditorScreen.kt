@@ -1,5 +1,6 @@
 package com.example.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -29,7 +30,13 @@ fun AgentEditorScreen(
     onBack: () -> Unit
 ) {
     val instructions by viewModel.getInstructions(agentId).collectAsStateWithLifecycle()
+    val agents by viewModel.allAgents.collectAsStateWithLifecycle()
+    val agent = agents.find { it.id == agentId }
     var showAddDialog by remember { mutableStateOf(false) }
+
+    var agentName by remember(agent) { mutableStateOf(agent?.name ?: "") }
+    var agentDesc by remember(agent) { mutableStateOf(agent?.description ?: "") }
+    var agentColorHex by remember(agent) { mutableStateOf(agent?.colorHex ?: "#6750A4") }
 
     Scaffold(
         topBar = {
@@ -58,6 +65,55 @@ fun AgentEditorScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.padding(padding)
         ) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth().border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(24.dp)),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                ) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Text("مظهر الوكيل", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        
+                        TextField(
+                            value = agentName,
+                            onValueChange = { agentName = it },
+                            label = { Text("الاسم") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        
+                        TextField(
+                            value = agentDesc,
+                            onValueChange = { agentDesc = it },
+                            label = { Text("الوصف") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Text("لون الوكيل", fontWeight = FontWeight.SemiBold)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf("#6750A4", "#4CAF50", "#FFC107", "#F44336", "#2196F3").forEach { color ->
+                                Box(
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .background(androidx.compose.ui.graphics.Color(android.graphics.Color.parseColor(color)), CircleShape)
+                                        .border(if (agentColorHex == color) 2.dp else 0.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
+                                        .clickable { agentColorHex = color }
+                                )
+                            }
+                        }
+
+                        Button(
+                            onClick = {
+                                agent?.let {
+                                    viewModel.updateAgent(it.copy(name = agentName, description = agentDesc, colorHex = agentColorHex))
+                                }
+                            },
+                            modifier = Modifier.align(Alignment.End)
+                        ) {
+                            Text("تحديث الملف الشخصي")
+                        }
+                    }
+                }
+            }
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth().border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(24.dp)),

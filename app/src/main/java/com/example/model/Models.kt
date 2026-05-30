@@ -11,7 +11,9 @@ data class Agent(
     val name: String,
     val providerType: String = "GEMINI",
     val description: String = "",
-    val icon: String = "person"
+    val icon: String = "person",
+    val colorHex: String? = null,
+    val avatarUri: String? = null
 )
 
 @Serializable

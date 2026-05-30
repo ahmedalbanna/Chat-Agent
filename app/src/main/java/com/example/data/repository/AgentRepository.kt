@@ -17,6 +17,7 @@ class AgentRepository(
 
     suspend fun getAgentById(id: Long) = agentDao.getAgentById(id)
     suspend fun insertAgent(agent: Agent) = agentDao.insertAgent(agent)
+    suspend fun updateAgent(agent: Agent) = agentDao.updateAgent(agent)
     suspend fun deleteAgent(agent: Agent) = agentDao.deleteAgent(agent)
 
     fun getInstructions(agentId: Long) = instructionDao.getInstructionsForAgent(agentId)
@@ -26,5 +27,7 @@ class AgentRepository(
 
     fun getMessages(agentId: Long, instructionId: Long) = messageDao.getMessagesForAgentAndInstruction(agentId, instructionId)
     suspend fun insertMessage(message: Message) = messageDao.insertMessage(message)
+    suspend fun deleteMessage(message: Message) = messageDao.deleteMessage(message)
     suspend fun clearChat(agentId: Long) = messageDao.deleteMessagesForAgent(agentId)
+    fun searchMessages(query: String) = messageDao.searchMessages(query)
 }

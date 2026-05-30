@@ -6,11 +6,17 @@ import com.example.data.repository.AgentRepository
 
 class ViewModelFactory(private val repository: AgentRepository) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(AgentViewModel::class.java)) {
-            @Suppress("UNCHECKED_CAST")
-            return AgentViewModel(repository) as T
+        return when {
+            modelClass.isAssignableFrom(AgentViewModel::class.java) -> {
+                @Suppress("UNCHECKED_CAST")
+                AgentViewModel(repository) as T
+            }
+            modelClass.isAssignableFrom(HistoryViewModel::class.java) -> {
+                @Suppress("UNCHECKED_CAST")
+                HistoryViewModel(repository) as T
+            }
+            else -> throw IllegalArgumentException("Unknown ViewModel class")
         }
-        throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
 

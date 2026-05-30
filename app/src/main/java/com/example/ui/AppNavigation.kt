@@ -18,6 +18,7 @@ import com.example.data.repository.AgentRepository
 import com.example.viewmodel.AgentViewModel
 import com.example.viewmodel.ChatViewModel
 import com.example.viewmodel.ChatViewModelFactory
+import com.example.viewmodel.HistoryViewModel
 import com.example.viewmodel.ViewModelFactory
 
 @Composable
@@ -39,7 +40,17 @@ fun AppNavigation() {
                     },
                     onSettingsClick = { agentId ->
                         navController.navigate("agent_editor/$agentId")
+                    },
+                    onHistoryClick = {
+                        navController.navigate("history")
                     }
+                )
+            }
+            composable("history") {
+                val historyViewModel: HistoryViewModel = viewModel(factory = ViewModelFactory(repository))
+                HistoryScreen(
+                    viewModel = historyViewModel,
+                    onBack = { navController.popBackStack() }
                 )
             }
             composable(

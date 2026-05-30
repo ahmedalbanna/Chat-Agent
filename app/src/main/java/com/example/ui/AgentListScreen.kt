@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
@@ -33,7 +34,8 @@ import com.example.viewmodel.AgentViewModel
 fun AgentListScreen(
     viewModel: AgentViewModel,
     onAgentClick: (Long) -> Unit,
-    onSettingsClick: (Long) -> Unit
+    onSettingsClick: (Long) -> Unit,
+    onHistoryClick: () -> Unit
 ) {
     val agents by viewModel.allAgents.collectAsStateWithLifecycle()
     var showAddDialog by remember { mutableStateOf(false) }
@@ -101,6 +103,10 @@ fun AgentListScreen(
                                 tint = MaterialTheme.colorScheme.primary
                             )
                         }
+                    }
+
+                    IconButton(onClick = onHistoryClick) {
+                        Icon(Icons.Default.History, contentDescription = "السجل", tint = MaterialTheme.colorScheme.primary)
                     }
 
                     if (showNotificationList) {
@@ -198,14 +204,14 @@ fun AgentCard(
             Surface(
                 modifier = Modifier.size(40.dp),
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.primaryContainer
+                color = agent.colorHex?.let { androidx.compose.ui.graphics.Color(android.graphics.Color.parseColor(it)) } ?: MaterialTheme.colorScheme.primaryContainer
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         Icons.Default.Person,
                         contentDescription = null,
                         modifier = Modifier.size(24.dp),
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        tint = if (agent.colorHex != null) androidx.compose.ui.graphics.Color.White else MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
             }

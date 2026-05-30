@@ -50,8 +50,12 @@ fun ChatScreen(
 ) {
     val messages by chatViewModel.messages.collectAsStateWithLifecycle()
     val instructions by agentViewModel.getInstructions(agentId).collectAsStateWithLifecycle()
+    val agents by agentViewModel.allAgents.collectAsStateWithLifecycle()
+    val agent = agents.find { it.id == agentId }
     val isTyping by chatViewModel.isTyping.collectAsStateWithLifecycle()
     val selectedId by chatViewModel.selectedInstructionId.collectAsStateWithLifecycle()
+
+    val agentColor = agent?.colorHex?.let { Color(android.graphics.Color.parseColor(it)) } ?: MaterialTheme.colorScheme.primary
 
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
@@ -85,9 +89,9 @@ fun ChatScreen(
                     title = {
                         Column {
                             val activeInstruction = instructions.find { it.id == selectedId }
-                            Text(activeInstruction?.name ?: "المحادثة", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            Text(agent?.name ?: activeInstruction?.name ?: "المحادثة", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Box(modifier = Modifier.size(6.dp).background(if (isTyping) Color(0xFF6750A4) else Color(0xFF4CAF50), CircleShape))
+                                Box(modifier = Modifier.size(6.dp).background(if (isTyping) agentColor else Color(0xFF4CAF50), CircleShape))
                                 Text(
                                     if (isTyping) "جاري التوليد..." else "متصل • ${activeInstruction?.modelName ?: "Gemini"}",
                                     fontSize = 11.sp,
@@ -192,14 +196,14 @@ fun ChatScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             items(messages) { message ->
-                MessageBubble(message)
+                MessageBubble(message, agentName = agent?.name ?: "الوكيل", agentColor = agentColor)
             }
         }
     }
 }
 
 @Composable
-fun MessageBubble(message: Message) {
+fun MessageBubble(message: Message, agentName: String, agentColor: Color) {
     val isUser = message.role == "USER"
     Column(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -207,9 +211,9 @@ fun MessageBubble(message: Message) {
     ) {
         if (!isUser) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(12.dp), tint = MaterialTheme.colorScheme.primary)
+                Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(12.dp), tint = agentColor)
                 Text(
-                    text = "الوكيل الذكي",
+                    text = agentName,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.6f)
