@@ -95,11 +95,13 @@ class ChatViewModel(
                     generationConfig = generationConfig
                 )
 
+                val startTime = System.currentTimeMillis()
                 val response = RetrofitClient.service.generateContent(
                     model = modelName,
                     apiKey = BuildConfig.GEMINI_API_KEY,
                     request = request
                 )
+                val duration = System.currentTimeMillis() - startTime
 
                 val aiResponseText = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text ?: "No response"
                 
@@ -110,6 +112,28 @@ class ChatViewModel(
                     content = aiResponseText
                 )
                 repository.insertMessage(aiMsg)
+
+                // Retrieve agent details for the notification
+                val agent = repository.getAgentById(agentId)
+                val agentName = agent?.name ?: "الوكيل الذكي"
+
+                // Post notification for new message
+                com.example.notification.InAppNotificationManager.postNotification(
+                    title = "رسالة جديدة من $agentName",
+                    message = if (aiResponseText.length > 60) "${aiResponseText.take(60)}..." else aiResponseText,
+                    type = com.example.notification.NotificationType.NEW_MESSAGE,
+                    agentName = agentName
+                )
+
+                // If processing took longer than 3 seconds, also post a long-response completion notification
+                if (duration > 3000) {
+                    com.example.notification.InAppNotificationManager.postNotification(
+                        title = "اكتملت المعالجة الطويلة",
+                        message = "انتهى الوكيل $agentName من معالجة الاستجابة لـ ${instruction?.name ?: "التعليمات"}",
+                        type = com.example.notification.NotificationType.LONG_RESPONSE,
+                        agentName = agentName
+                    )
+                }
 
             } catch (e: Exception) {
                 repository.insertMessage(Message(

@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SmartToy
@@ -72,6 +73,40 @@ fun AgentListScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
+                    }
+
+                    // Notification Bell Icon with Badge
+                    var showNotificationList by remember { mutableStateOf(false) }
+                    val notifications by com.example.notification.InAppNotificationManager.notifications.collectAsStateWithLifecycle(initialValue = emptyList())
+                    val unreadCount = notifications.count { !it.read }
+
+                    IconButton(
+                        onClick = { showNotificationList = true }
+                    ) {
+                        BadgedBox(
+                            badge = {
+                                if (unreadCount > 0) {
+                                    Badge(
+                                        containerColor = MaterialTheme.colorScheme.error,
+                                        contentColor = MaterialTheme.colorScheme.onError
+                                    ) {
+                                        Text(unreadCount.toString(), fontSize = 10.sp)
+                                    }
+                                }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = androidx.compose.material.icons.Icons.Default.Notifications,
+                                contentDescription = "الإشعارات",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+
+                    if (showNotificationList) {
+                        NotificationHistoryDialog(
+                            onDismissRequest = { showNotificationList = false }
+                        )
                     }
                 }
             }
